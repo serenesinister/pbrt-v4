@@ -59,6 +59,11 @@ std::string ToString(TransportMode mode) {
 }
 
 // BxDF Method Definitions
+std::string OrenNayarBxDF::ToString() const {
+    return StringPrintf("[ OrenNayarBxDF R: %s A: %f B: %f ]", 
+                        R.ToString().c_str(), A, B);
+}
+
 std::string DiffuseBxDF::ToString() const {
     return StringPrintf("[ DiffuseBxDF R: %s ]", R);
 }
