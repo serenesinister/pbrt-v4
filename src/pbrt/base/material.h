@@ -19,6 +19,7 @@ namespace pbrt {
 struct MaterialEvalContext;
 
 // Material Declarations
+class OrenNayarMaterial;
 class CoatedDiffuseMaterial;
 class CoatedConductorMaterial;
 class ConductorMaterial;
@@ -36,7 +37,7 @@ class Material
     : public TaggedPointer<  // Material Types
           CoatedDiffuseMaterial, CoatedConductorMaterial, ConductorMaterial,
           DielectricMaterial, DiffuseMaterial, DiffuseTransmissionMaterial, HairMaterial,
-          MeasuredMaterial, SubsurfaceMaterial, ThinDielectricMaterial, MixMaterial
+          MeasuredMaterial, SubsurfaceMaterial, ThinDielectricMaterial, MixMaterial, OrenNayarMaterial
 
           > {
   public:
