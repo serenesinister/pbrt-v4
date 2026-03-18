@@ -426,6 +426,69 @@ class HairMaterial {
     FloatTexture beta_m, beta_n, alpha;
 };
 
+// OrenNayarMaterial Definition
+class OrenNayarMaterial {
+  public:
+    static const char *Name() { return "OrenNayarMaterial"; }
+    using BxDF = OrenNayarBxDF;
+    using BSSRDF = void;
+
+    OrenNayarMaterial(SpectrumTexture reflectance,
+                      FloatTexture sigma,
+                      FloatTexture displacement,
+                      Image* normalMap)
+        : reflectance(reflectance),
+          sigma(sigma),
+          displacement(displacement),
+          normalMap(normalMap) {}
+
+    template <typename TextureEvaluator>
+    PBRT_CPU_GPU OrenNayarBxDF GetBxDF(TextureEvaluator texEval,
+                                       const MaterialEvalContext &ctx,
+                                       SampledWavelengths &lambda) const {
+        SampledSpectrum r = Clamp(texEval(reflectance, ctx, lambda), 0, 1);
+        Float s = texEval(sigma, ctx);
+        return OrenNayarBxDF(r, s);
+    }
+
+    template <typename TextureEvaluator>
+    PBRT_CPU_GPU BSDF GetBSDF(TextureEvaluator texEval,
+                              const MaterialEvalContext &ctx,
+                              SampledWavelengths &lambda,
+                              ScratchBuffer &scratchBuffer) const {
+        OrenNayarBxDF *bxdf = scratchBuffer.Alloc<OrenNayarBxDF>(GetBxDF(texEval, ctx, lambda));
+        return BSDF(ctx.ns, ctx.dpdus, bxdf);
+    }
+
+    template <typename TextureEvaluator>
+    PBRT_CPU_GPU void GetBSSRDF(TextureEvaluator texEval,
+                                const MaterialEvalContext &ctx,
+                                SampledWavelengths &lambda) const {
+    }
+
+    PBRT_CPU_GPU bool HasSubsurfaceScattering() const { return false; }
+
+
+        template <typename TextureEvaluator>
+        PBRT_CPU_GPU bool CanEvaluateTextures(TextureEvaluator texEval) const {
+            return texEval.CanEvaluate({sigma}, {reflectance});
+        }
+
+    PBRT_CPU_GPU FloatTexture GetDisplacement() const { return displacement; }
+    PBRT_CPU_GPU const Image* GetNormalMap() const { return normalMap; }
+
+    static OrenNayarMaterial* Create(const TextureParameterDictionary &parameters,
+                                     Image *normalMap, const FileLoc *loc, Allocator alloc);
+    
+    std::string ToString() const;
+
+  private:
+    SpectrumTexture reflectance;
+    FloatTexture sigma;
+    FloatTexture displacement;
+    Image* normalMap;
+};
+
 // DiffuseMaterial Definition
 class DiffuseMaterial {
   public:
