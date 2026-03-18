@@ -81,6 +81,88 @@ class DiffuseBxDF {
     SampledSpectrum R;
 };
 
+// OrenNayarBxDF Definition
+class OrenNayarBxDF {
+  public:
+    OrenNayarBxDF() = default;
+
+    PBRT_CPU_GPU
+    OrenNayarBxDF(const SampledSpectrum &R, Float sigma) : R(R) {
+        Float sigmaRad = Radians(sigma);
+        Float sigma2 = sigmaRad * sigmaRad;
+        A = 1 - (sigma2 / (2 * (sigma2 + 0.33f)));
+        B = 0.45f * sigma2 / (sigma2 + 0.09f);
+    }
+
+    PBRT_CPU_GPU
+    SampledSpectrum f(Vector3f wo, Vector3f wi, TransportMode) const {
+        if (!SameHemisphere(wo, wi))
+            return SampledSpectrum(0);
+
+        Float sinThetaI = SinTheta(wi);
+        Float sinThetaO = SinTheta(wo);
+
+        Float maxCos = 0;
+        if (sinThetaI > 1e-4f && sinThetaO > 1e-4f) {
+            Float sinPhiI = SinPhi(wi), cosPhiI = CosPhi(wi);
+            Float sinPhiO = SinPhi(wo), cosPhiO = CosPhi(wo);
+            maxCos = std::max<Float>(0, cosPhiI * cosPhiO + sinPhiI * sinPhiO);
+        }
+
+        Float sinAlpha, tanBeta;
+        if (AbsCosTheta(wi) > AbsCosTheta(wo)) {
+            sinAlpha = sinThetaO;
+            tanBeta = sinThetaI / AbsCosTheta(wi);
+        } else {
+            sinAlpha = sinThetaI;
+            tanBeta = sinThetaO / AbsCosTheta(wo);
+        }
+
+        return R * InvPi * (A + B * maxCos * sinAlpha * tanBeta);
+    }
+
+    PBRT_CPU_GPU
+    pstd::optional<BSDFSample> Sample_f(
+        Vector3f wo, Float uc, Point2f u, TransportMode mode,
+        BxDFReflTransFlags sampleFlags = BxDFReflTransFlags::All) const {
+        if (!(sampleFlags & BxDFReflTransFlags::Reflection))
+            return {};
+
+        Vector3f wi = SampleCosineHemisphere(u);
+        if (wo.z < 0)
+            wi.z *= -1;
+
+        Float pdf = CosineHemispherePDF(AbsCosTheta(wi));
+        return BSDFSample(f(wo, wi, mode), wi, pdf, BxDFFlags::DiffuseReflection);
+    }
+
+    PBRT_CPU_GPU
+    Float PDF(Vector3f wo, Vector3f wi, TransportMode,
+              BxDFReflTransFlags sampleFlags = BxDFReflTransFlags::All) const {
+        if (!(sampleFlags & BxDFReflTransFlags::Reflection) || !SameHemisphere(wo, wi))
+            return 0;
+        return CosineHemispherePDF(AbsCosTheta(wi));
+    }
+
+    // Necessário para o TaggedPointer no pbrt-v4
+    std::string ToString() const;
+
+    PBRT_CPU_GPU
+    static constexpr const char *Name() { return "OrenNayarBxDF"; }
+
+    PBRT_CPU_GPU
+    void Regularize() {}
+
+    PBRT_CPU_GPU
+    BxDFFlags Flags() const {
+        return R ? BxDFFlags::DiffuseReflection : BxDFFlags::Unset;
+    }
+
+  private:
+    SampledSpectrum R;
+    Float A, B;
+};
+
 // DiffuseTransmissionBxDF Definition
 class DiffuseTransmissionBxDF {
   public:
