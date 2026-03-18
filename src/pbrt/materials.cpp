@@ -183,6 +183,35 @@ HairMaterial *HairMaterial::Create(const TextureParameterDictionary &parameters,
                                           beta_m, beta_n, alpha);
 }
 
+// OrenNayarMaterial Method Definitions
+std::string OrenNayarMaterial::ToString() const {
+    return "OrenNayarMaterial";
+}
+
+OrenNayarMaterial* OrenNayarMaterial::Create(
+    const TextureParameterDictionary &parameters,
+    Image *normalMap,
+    const FileLoc *loc,
+    Allocator alloc) {
+
+    SpectrumTexture reflectance =
+        parameters.GetSpectrumTexture("reflectance", nullptr,
+                                      SpectrumType::Albedo, alloc);
+
+    if (!reflectance)
+        reflectance = alloc.new_object<SpectrumConstantTexture>(
+            alloc.new_object<ConstantSpectrum>(0.5f));
+
+    FloatTexture sigma =
+        parameters.GetFloatTexture("sigma", 0.f, alloc);
+
+    FloatTexture displacement =
+        parameters.GetFloatTextureOrNull("displacement", alloc);
+
+    return alloc.new_object<OrenNayarMaterial>(
+        reflectance, sigma, displacement, normalMap);
+}
+
 // DiffuseMaterial Method Definitions
 std::string DiffuseMaterial::ToString() const {
     return StringPrintf(
@@ -641,12 +670,14 @@ Material Material::Create(const std::string &name,
         return nullptr;
     } else if (name == "interface")
         return nullptr;
+    else if (name == "orennayar")
+        material = OrenNayarMaterial::Create(parameters, normalMap, loc, alloc);    
     else if (name == "diffuse")
         material = DiffuseMaterial::Create(parameters, normalMap, loc, alloc);
     else if (name == "coateddiffuse")
         material = CoatedDiffuseMaterial::Create(parameters, normalMap, loc, alloc);
     else if (name == "coatedconductor")
-        material = CoatedConductorMaterial::Create(parameters, normalMap, loc, alloc);
+        material = CoatedConductorMaterial::Create(parameters, normalMap, loc, alloc);  
     else if (name == "diffusetransmission")
         material = DiffuseTransmissionMaterial::Create(parameters, normalMap, loc, alloc);
     else if (name == "dielectric")
